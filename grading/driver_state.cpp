@@ -43,6 +43,7 @@ void render(driver_state& state, render_type type)
     switch (type){
         case render_type::triangle :
             {
+            /*
             for(int verts = 0 ;verts < state.num_vertices/3; ++verts){
                 int iter = verts * 9;
                 data_geometry dg_arr[3];
@@ -51,6 +52,16 @@ void render(driver_state& state, render_type type)
                     int incr = iter + i * state.floats_per_vertex ;
                     dg_arr[i].data = (state.vertex_data+incr);
                     }
+                    rasterize_triangle(state, p_dg_arr);
+            }*/
+            data_geometry dg_arr[3];
+            const data_geometry * p_dg_arr[3] = {&dg_arr[0], &dg_arr[1], &dg_arr[2]};
+            int incr = 3 * state.floats_per_vertex;
+            for(int i = 0; i < state.num_vertices*state.floats_per_vertex; i += incr){
+               // std::cout << "YO " << state.num_vertices << std::endl;
+                    dg_arr[0].data = (state.vertex_data+i);
+                    dg_arr[1].data = (state.vertex_data+i+state.floats_per_vertex);
+                    dg_arr[2].data = (state.vertex_data+i+2*state.floats_per_vertex);
                     rasterize_triangle(state, p_dg_arr);
             }
             }
