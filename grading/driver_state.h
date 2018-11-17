@@ -99,5 +99,6 @@ void clip_triangle(driver_state& state, const data_geometry* in[3],int face=0);
 // function is responsible for rasterization, interpolation of data to
 // fragments, calling the fragment shader, and z-buffering.
 void rasterize_triangle(driver_state& state, const data_geometry* in[3]);
-
+//float tArea(data_geometry *in[3]);
+float t_Area(vec2 &a, vec2 &b, vec2 &c);
 #endif
