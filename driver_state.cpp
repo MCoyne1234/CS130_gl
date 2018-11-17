@@ -43,16 +43,16 @@ void render(driver_state& state, render_type type)
     switch (type){
         case render_type::triangle :
             {
- //           std::cout << "VERTEX_DATA: "<< *(state.vertex_data) <<" "<<  *(state.vertex_data+1) <<" "<< *(state.vertex_data+2) <<std::endl;
-            data_geometry dg_arr[3];
-            const data_geometry * p_dg_arr[3] = {&dg_arr[0], &dg_arr[1], &dg_arr[2]};
-
-            for(int i = 0; i < 3 ; ++i ){
-                int incr = i * state.floats_per_vertex;
-                dg_arr[i].data = (state.vertex_data+incr);
-                //std::cout << "VERTICES: "<< *(dg_arr[i].data) <<  *(dg_arr[i].data+1) << *(dg_arr[i].data+2) <<std::endl;
-                }
-                rasterize_triangle(state, p_dg_arr);
+            for(int verts = 0 ;verts < state.num_vertices/3; ++verts){
+                int iter = verts * 9;
+                data_geometry dg_arr[3];
+                const data_geometry * p_dg_arr[3] = {&dg_arr[0], &dg_arr[1], &dg_arr[2]};
+                for(int i = 0; i < 3 ; ++i ){
+                    int incr = iter + i * state.floats_per_vertex ;
+                    dg_arr[i].data = (state.vertex_data+incr);
+                    }
+                    rasterize_triangle(state, p_dg_arr);
+            }
             }
             break;
         case render_type::indexed :
@@ -122,38 +122,12 @@ void rasterize_triangle(driver_state& state, const data_geometry* in[3])
     vec2 c = vec2( (out[2].gl_Position[0] /out[2].gl_Position[3] + 1) * 0.5 * width ,
                    (out[2].gl_Position[1] /out[2].gl_Position[3] + 1) * 0.5 * height);
 //*/
-/*
-    vec2 a = vec2( (out[0].gl_Position[0] + 1) * 0.5 * height,
-                   (out[0].gl_Position[1] + 1) * 0.5 * width);
-
-    vec2 b = vec2( (out[1].gl_Position[0] + 1) * 0.5 * height,
-                   (out[1].gl_Position[1] + 1) * 0.5 * width );
-
-    vec2 c = vec2( (out[2].gl_Position[0] + 1) * 0.5 * height,
-                   (out[2].gl_Position[1] + 1) * 0.5 * width);
-*/
-/*
-    vec2 d, e, f;
-    d = vec2( in[0]->data[0], in[0]->data[1]) ;
-    e = vec2( in[1]->data[0], in[1]->data[1]) ;
-    f = vec2( in[2]->data[0], in[2]->data[1]) ;
-    inv_tArea = 1/t_Area(d,e,f);
-    std::cout << "d: " << d[0] << ", " << d[1] << std::endl;
-    std::cout << "e: " << e[0] << ", " << e[1] << std::endl;
-    std::cout << "f: " << f[0] << ", " << f[1] << std::endl;
-    std::cout << "inverse area: " << inv_tArea << std::endl;
-*/
-/*
-    std::cout << "a: " << a[0] << ", " << a[1] << std::endl;
-    std::cout << "b: " << b[0] << ", " << b[1] << std::endl;
-    std::cout << "c: " << c[0] << ", " << c[1] << std::endl;
-*/    
     inv_tArea = 1/t_Area(a,b,c);
     int walk = 0;
     for(size_t i = 0; i < height; ++i){
         for(size_t j = 0; j < width; ++j){
             
-            pixel_pos = {float(j + 0.5), float(i+0.5)};
+            pixel_pos = {float(j + 0.5), float(i + 0.5)};
             alpha = t_Area(pixel_pos, b, c) * inv_tArea;
             beta  = t_Area(a, pixel_pos, c) * inv_tArea;
             gamma = t_Area(a, b, pixel_pos) * inv_tArea;
@@ -172,13 +146,6 @@ void rasterize_triangle(driver_state& state, const data_geometry* in[3])
         }
     }
 }
-/*
-float tArea(data_geometry *in[3]){
-    return 0.5 * ( (in[1]->data[0] * in[2]->data[1] - in[2]->data[0] * in[1]->data[1])
-                  -(in[0]->data[0] * in[2]->data[1] - in[2]->data[0] * in[0]->data[1])
-                  +(in[0]->data[0] * in[1]->data[1] - in[1]->data[0] * in[0]->data[1]) );
-}
-*/
 
 float t_Area(vec2 &a, vec2 &b, vec2 &c){
  return 0.5 * ((b[0]*c[1]-c[0]*b[1]) 

@@ -73,7 +73,7 @@ for line in gs.readlines():
         shutil.copyfile(test_dir+'/'+file+".txt", dir+"/file.txt")
         shutil.copyfile(test_dir+'/'+file+".png", dir+"/file.png")
         if not run_command_with_timeout(grade_cmd, timeout):
-            hashed_tests[file]="TIMEOUT"
+            hashed_tests[file]=("TIMEOUT",None)
         else:
             try:
                 report=dir+'/'+token+'.txt'
@@ -85,7 +85,7 @@ for line in gs.readlines():
                 if d: d=float(d.groups()[0])
                 hashed_tests[file]=d
             except:
-                hashed_tests[file]=None
+                hashed_tests[file]=(None,None)
 
     d=hashed_tests[file]
     if d=="TIMEOUT":
