@@ -13,7 +13,7 @@ render triangle
 vertex_shader color
 fragment_shader gouraud
 vertex_data ffffff
-v 0.5 0.25 0.5 1 0 0
+v 0.50 0.25  0.5 1 0 0
 v 0.75 0.25 -0.5 0 1 0
 v 0.75 0.75 -0.5 0 0 1
 render triangle

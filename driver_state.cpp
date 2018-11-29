@@ -22,7 +22,11 @@ void initialize_render(driver_state& state, int width, int height)
     state.image_height=height;
     
     state.image_color = new pixel[area];// 0;
-    state.image_depth=0;
+    state.image_depth = new float[area];//0;
+    for (size_t i = 0; i < area;++i) {
+        state.image_depth[i] = -200.0;
+    }
+
     //std::cout<<"TODO: allocate and initialize state.image_color and state.image_depth."<<std::endl;
     pixel black = make_pixel(0,0,0);
     for(unsigned int i = 0; i < area ; ++i){
@@ -43,42 +47,92 @@ void render(driver_state& state, render_type type)
     switch (type){
         case render_type::triangle :
             {
-            /*
-            for(int verts = 0 ;verts < state.num_vertices/3; ++verts){
-                int iter = verts * 9;
-                data_geometry dg_arr[3];
-                const data_geometry * p_dg_arr[3] = {&dg_arr[0], &dg_arr[1], &dg_arr[2]};
-                for(int i = 0; i < 3 ; ++i ){
-                    int incr = iter + i * state.floats_per_vertex ;
-                    dg_arr[i].data = (state.vertex_data+incr);
-                    }
-                    rasterize_triangle(state, p_dg_arr);
-            }*/
+/*        std::cout << "NEW" << std::endl;
+        for(int i = 0; i < state.num_vertices*state.floats_per_vertex; i++){
+            std::cout << "Vert" << state.vertex_data[i] << std::endl;
+        }
+*/
+
+///*
+        //int fpv = state.floats_per_vertex;
+        data_geometry dg_arr[3];
+        const data_geometry * p_dg_arr[3] = {&dg_arr[0], &dg_arr[1], &dg_arr[2]};
+        for(int vert = 0 ;vert < state.num_vertices * state.floats_per_vertex ; vert += 3*state.floats_per_vertex){
+            for(int v = 0; v < 3; ++v){
+                dg_arr[v].data = state.vertex_data+vert+v*state.floats_per_vertex;
+            }
+            rasterize_triangle(state, p_dg_arr);
+        }
+//*/
+
+        /*
             data_geometry dg_arr[3];
             const data_geometry * p_dg_arr[3] = {&dg_arr[0], &dg_arr[1], &dg_arr[2]};
             int incr = 3 * state.floats_per_vertex;
             for(int i = 0; i < state.num_vertices*state.floats_per_vertex; i += incr){
-               // std::cout << "YO " << state.num_vertices << std::endl;
+                std::cout << "YO " << state.num_vertices << std::endl;
                     dg_arr[0].data = (state.vertex_data+i);
                     dg_arr[1].data = (state.vertex_data+i+state.floats_per_vertex);
                     dg_arr[2].data = (state.vertex_data+i+2*state.floats_per_vertex);
                     rasterize_triangle(state, p_dg_arr);
             }
+         */
             }
             break;
         case render_type::indexed :
             {
             std::cout << "indexed" << std::endl;
+            data_geometry dg_center[3];
+            const data_geometry * p_dg_center[3] = {&dg_center[0],&dg_center[1],&dg_center[2]};
+            size_t max =  3 * state.num_triangles;
+
+            for(size_t i = 0; i < max; i += 3){
+                dg_center[0].data = state.vertex_data + *(state.index_data +i) * 3;//state.floats_per_vertex;
+                dg_center[1].data = state.vertex_data + *(state.index_data +i+1) * 3;//state.floats_per_vertex;
+                dg_center[2].data = state.vertex_data + *(state.index_data +i+2) * 3;//state.floats_per_vertex;
+                rasterize_triangle(state, p_dg_center);
+            }
             break;
             }
         case render_type::fan :
             {
-            std::cout << "fan" << std::endl;
+            //std::cout << "fan" << std::endl;
+            data_geometry dg_center[3];
+            const data_geometry * p_dg_center[3] = {&dg_center[0],&dg_center[1],&dg_center[2]};
+            size_t max = state.num_vertices * state.floats_per_vertex;
+            size_t incr = 3 * state.floats_per_vertex;
+
+            dg_center[0].data = state.vertex_data;
+            dg_center[1].data = state.vertex_data + state.floats_per_vertex;
+            dg_center[2].data = state.vertex_data + 2*state.floats_per_vertex;
+            rasterize_triangle(state, p_dg_center);
+            for(size_t i = incr; i < max; i += state.floats_per_vertex){
+                dg_center[1].data = dg_center[2].data;
+                dg_center[2].data = state.vertex_data + i;
+                rasterize_triangle(state, p_dg_center);
+            }
+
             break;
             }
         case render_type::strip :
             {
-            std::cout << "strip" << std::endl;
+            //std::cout << "strip" << std::endl;
+            data_geometry dg_center[3];
+            const data_geometry * p_dg_center[3] = {&dg_center[0],&dg_center[1],&dg_center[2]};
+            size_t max = state.num_vertices * state.floats_per_vertex;
+            size_t incr = 3 * state.floats_per_vertex;
+
+            dg_center[0].data = state.vertex_data;
+            dg_center[1].data = state.vertex_data + state.floats_per_vertex;
+            dg_center[2].data = state.vertex_data + 2*state.floats_per_vertex;
+            rasterize_triangle(state, p_dg_center);
+
+            for(size_t i = incr; i < max; i += state.floats_per_vertex){
+                dg_center[0].data = dg_center[1].data;
+                dg_center[1].data = dg_center[2].data;
+                dg_center[2].data = state.vertex_data + i;
+                rasterize_triangle(state, p_dg_center);
+            }
             break;
             }
         default:
@@ -115,6 +169,7 @@ void rasterize_triangle(driver_state& state, const data_geometry* in[3])
 
     for(unsigned int i = 0; i < 3; ++i){
         verts.data = in[i]->data;
+        out[i].data = verts.data;
         state.vertex_shader( verts, out[i], state.uniform_data);
     }
 
@@ -122,8 +177,10 @@ void rasterize_triangle(driver_state& state, const data_geometry* in[3])
 
     size_t width = state.image_width;
     size_t height = state.image_height;
+ ///*
     vec2 pixel_pos;
-///*   
+    vec3 pixel_pos_3d;
+
     vec2 a = vec2( (out[0].gl_Position[0] /out[0].gl_Position[3] + 1) * 0.5 * width ,
                    (out[0].gl_Position[1] /out[0].gl_Position[3] + 1) * 0.5 * height);
 
@@ -143,15 +200,37 @@ void rasterize_triangle(driver_state& state, const data_geometry* in[3])
             beta  = t_Area(a, pixel_pos, c) * inv_tArea;
             gamma = t_Area(a, b, pixel_pos) * inv_tArea;
 
+            pixel_pos_3d[0] = pixel_pos[0];
+            pixel_pos_3d[1] = pixel_pos[1];
+            pixel_pos_3d[2] = (out[0].data[2]*alpha + out[1].data[2]*beta + out[2].data[2]*gamma);
+
             if(alpha >= 0 && beta >= 0 && gamma >= 0){
             //std::cout << "A B G = " << alpha << " " << beta << " " << gamma << std::endl;
-                data_fragment dFrag;
+                float d_out[state.floats_per_vertex];
+                //data_fragment dFrag;
                 data_output dOutput;
 
-                state.fragment_shader(dFrag, dOutput, state.uniform_data);
-                //state.image_color[(j * width) + i] = make_pixel(255,255,255);
-                state.image_color[walk] = make_pixel(255,255,255);
-                //state.image_color[(i * width) + j] =make_pixel(dOutput.output_color[0], dOutput.output_color[1],dOutput.output_color[2]);
+
+                for(int k = 0; k < state.floats_per_vertex; ++k){
+                    if(state.interp_rules[k] == interp_type::flat){
+                        // then data_out[i] should be the float from data from the first vertex.
+                        d_out[k]= out[0].data[k];
+                    }
+                    else if(state.interp_rules[k] == interp_type::noperspective){
+                        // then data_out[i] should be the interpolation of data_a[i], data_b[i] and data_c[i] using the barycentric coordinates.
+                        d_out[k]= (alpha * out[0].data[k]) + (beta * out[1].data[k]) + (gamma * out[2].data[k]);
+                    }
+                    else if(state.interp_rules[k] == interp_type::smooth){
+                        // then data_out[i] should be the interpolation of data_a[i], data_b[i] and data_c[i]
+                        // using the barycentric coordinates with perspective correction
+                    }
+                }
+
+               if(pixel_pos_3d[2] > state.image_depth[walk] ){
+                    state.image_depth[walk] = pixel_pos_3d[2];
+                    state.fragment_shader({d_out}, dOutput, state.uniform_data);
+                    state.image_color[walk] = make_pixel(255*dOutput.output_color[0],255*dOutput.output_color[1],255*dOutput.output_color[2]);
+                }
             }
             ++walk;
         }
