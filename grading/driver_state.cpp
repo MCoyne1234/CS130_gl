@@ -1,5 +1,6 @@
 #include "driver_state.h"
 #include <cstring>
+#include <vector>
 
 driver_state::driver_state()
 {
@@ -47,11 +48,6 @@ void render(driver_state& state, render_type type)
     switch (type){
         case render_type::triangle :
             {
-/*        std::cout << "NEW" << std::endl;
-        for(int i = 0; i < state.num_vertices*state.floats_per_vertex; i++){
-            std::cout << "Vert" << state.vertex_data[i] << std::endl;
-        }
-*/
 
 ///*
         //int fpv = state.floats_per_vertex;
@@ -131,14 +127,12 @@ void render(driver_state& state, render_type type)
             dg_arr[1].data = state.vertex_data + state.floats_per_vertex;
             dg_arr[2].data = state.vertex_data + 2*state.floats_per_vertex;
             clip_triangle(state, p_dg_arr, 0);
-            //rasterize_triangle(state, p_dg_arr);
 
             for(size_t i = incr; i < max; i += state.floats_per_vertex){
                 dg_arr[0].data = dg_arr[1].data;
                 dg_arr[1].data = dg_arr[2].data;
                 dg_arr[2].data = state.vertex_data + i;
                 clip_triangle(state, p_dg_arr, 0);
-                //rasterize_triangle(state, p_dg_arr);
             }
             break;
             }
@@ -154,41 +148,240 @@ void render(driver_state& state, render_type type)
 // It will be called recursively, once for each clipping face (face=0, 1, ..., 5) to
 // clip against each of the clipping faces in turn.  When face=6, clip_triangle should
 // simply pass the call on to rasterize_triangle.
-void clip_triangle(driver_state& state, const data_geometry* in[3],int face)
+void clip_triangle(driver_state& state, const data_geometry* in[3], int face)
 {
-    //if(face ==0){
     data_vertex verts;
     data_geometry out[3];
     const data_geometry * p_out[3] = {&out[0] ,&out[1], &out[2]};
 
-    for(unsigned int i = 0; i < 3; ++i){
-        verts.data = in[i]->data;
-        out[i].data = in[i]->data;
-        state.vertex_shader( verts, out[i], state.uniform_data);
+        for(unsigned int i = 0; i < 3; ++i){
+            verts.data = in[i]->data;
+            out[i].data = verts.data;
+            out[i].gl_Position = in[i]->gl_Position;
+    if (face == 0){
+            state.vertex_shader(verts, out[i], state.uniform_data);
+        }
     }
-    rasterize_triangle(state, p_out);
-    return;
-   //}
-    if(face==6)
-    {
+    //rasterize_triangle(state, p_out);
+    //return;
+    /*
+    vec3 a = {out[0].data[0] , out[0].data[1] , out[0].data[2]};
+    vec3 b = {out[1].data[0] , out[1].data[1] , out[1].data[2]};
+    vec3 c = {out[2].data[0] , out[2].data[1] , out[2].data[2]};
+    */
+    ///*
+    vec3 a = {out[0].gl_Position[0] , out[0].gl_Position[1] , out[0].gl_Position[2]};
+    vec3 b = {out[1].gl_Position[0] , out[1].gl_Position[1] , out[1].gl_Position[2]};
+    vec3 c = {out[2].gl_Position[0] , out[2].gl_Position[1] , out[2].gl_Position[2]};
+    //*/
+    vec3 plane_point;
+    vec3 plane_norm;
+
+    std::vector<vec3> clipped_in, clipped_out;
+    vec3 clipped_v1, clipped_v2, u,v;//u1, v1, u2, v2;
+
+    if(face==6){
+       //std::cout << "raster.raster.raster" <<  std::endl;
         rasterize_triangle(state, p_out);
         return;
     }else if(face==5){
+        plane_point ={0,1,0};
+        plane_norm = {0,-1,0};
 
     }else if(face==4){
+        plane_point ={0,-1,0};
+        plane_norm = {0,1,0};
 
     }else if(face==3){
+        plane_point ={1,0,0};
+        plane_norm = {-1,0,0};
 
     }else if(face==2){
+        plane_point ={-1,0,0};
+        plane_norm = {1,0,0};
 
     }else if(face==1){
+        plane_point ={0,0,-1};
+        plane_norm = {0,0,1};
+
+    }else if(face==0){
+       plane_point ={0,0,1};
+       plane_norm = {0,0,-1};
 
     }
-    else if(face==0){
-      // if(in[0]->data[0] < -1)
-     }
-    std::cout<<"TODO: implement clipping. (The current code passes the triangle through without clipping them.)"<<std::endl;
-    clip_triangle(state,in,face+1);
+       /*
+       float check_a = dot(plane_norm,(plane_point - a));
+       float check_b = dot(plane_norm,(plane_point - b));
+       float check_c = dot(plane_norm,(plane_point - c));
+
+       std::cout << "check a " << check_a << std::endl;
+       std::cout << "check b " << check_b << std::endl;
+       std::cout << "check c " << check_c << std::endl;
+       std::cout << "W = " << out[vert_index].gl_Position[3] << std::endl << std::endl;
+       */
+
+        std::vector<data_geometry> holder;
+        std::vector<data_geometry> goner;
+        if(dot(plane_norm,(plane_point - a)) <= out[0].gl_Position[3]){
+            clipped_in.push_back(a);
+            holder.push_back(out[0]);
+        }else {
+            clipped_out.push_back(a);
+            goner.push_back(out[0]);
+        }
+
+        if(dot(plane_norm,(plane_point - b)) <= out[1].gl_Position[3]){
+            clipped_in.push_back(b);
+            holder.push_back(out[1]);
+        }else {
+            clipped_out.push_back(b);
+            goner.push_back(out[1]);
+        }
+
+        if(dot(plane_norm,(plane_point - c)) <= out[2].gl_Position[3]){
+            clipped_in.push_back(c);
+            holder.push_back(out[2]);
+        }else {
+            clipped_out.push_back(c);
+            goner.push_back(out[2]);
+        }
+
+        float D,N;
+        data_geometry new_out_1[3];
+        const data_geometry * p_new_out_1[3] = {&new_out_1[0] ,&new_out_1[1] ,&new_out_1[2]} ;
+        data_geometry new_out_2[3];
+        const data_geometry * p_new_out_2[3] = {&new_out_2[0] ,&new_out_2[1] ,&new_out_2[2]} ;
+
+        //float new_data_A[state.floats_per_vertex] = {0,0,0};
+        //float new_data_B[state.floats_per_vertex] = {0,0,0};
+
+        //float * p_A= &new_data_A[0];
+        //float * p_B= &new_data_B[0];
+
+        if(clipped_in.size() == 0){ return;}// std::cout << "DERP" << std::endl; }
+        if(clipped_in.size() == 1){
+
+            //std::cout << "TWO POINTS OUT " << std::endl;
+
+            new_out_1[0].data = holder[0].data;
+            new_out_1[0].gl_Position = holder[0].gl_Position;
+
+            // GET FIRST NEW POINT
+            u = clipped_out[0] - clipped_in[0];
+            v = clipped_in[0] - plane_point;
+            D = dot(plane_norm,u);
+            N = dot(plane_norm, v);
+
+            float sI = N / D;
+            clipped_v1 = clipped_in[0] + sI * u;
+
+            new_out_1[1].data = goner[0].data;
+            new_out_1[1].gl_Position = goner[0].gl_Position;
+
+            new_out_1[1].gl_Position[0] = clipped_v1[0];
+            new_out_1[1].gl_Position[1] = clipped_v1[1];
+            new_out_1[1].gl_Position[2] = clipped_v1[2];
+
+
+            // GET SECOND NEW POINT
+            u = clipped_out[1] - clipped_in[0];
+            v = clipped_in[0] - plane_point;
+            D = dot(plane_norm, u);
+            N = dot(plane_norm, v);
+            sI = N / D;
+
+            clipped_v2 = clipped_in[0] + sI * u;
+
+            new_out_1[2].data = goner[1].data;
+            new_out_1[2].gl_Position = goner[1].gl_Position;
+
+            new_out_1[2].gl_Position[0] = clipped_v2[0];
+            new_out_1[2].gl_Position[1] = clipped_v2[1];
+            new_out_1[2].gl_Position[2] = clipped_v2[2];
+
+            clip_triangle(state, p_new_out_1, face+1);
+        }
+        if(clipped_in.size() == 2){
+        //std::cout << "ONE POINT OUT " << std::endl;
+/*
+            u = clipped_out[0] - clipped_in[0];
+            v = clipped_in[0] - plane_point;
+            D = dot(plane_norm,u);
+            N = dot(plane_norm, v);
+            float sI = N / D;
+
+            clipped_v1 = clipped_in[0] + sI * u;
+
+            u = clipped_out[0] - clipped_in[1];
+            v = clipped_in[1] - plane_point;
+            D = dot(plane_norm,u);
+            N = dot(plane_norm, v);
+            sI = N / D;
+
+            clipped_v2 = clipped_in[1] + sI * u;
+
+            for(int i = 0; i < state.floats_per_vertex; ++i){
+                //std::cout << "DERKA-DER " << face<< std::endl;
+                //std::cout << "DER-DER " << (goner[0]).data[0] << std::endl;
+                new_data_A[i] = goner[0].data[i];
+                new_data_B[i] = goner[0].data[i];
+            }
+
+            new_data_A[0] *= clipped_v1[0];
+            new_data_A[1] *= clipped_v1[1];
+            new_data_A[2] *= clipped_v1[2];
+
+            new_data_B[0] *=  clipped_v2[0];
+            new_data_B[1] *=  clipped_v2[1];
+            new_data_B[2] *=  clipped_v2[2];
+
+            // FIRST NEW TRiANGLE
+            new_out_1[0].data = holder[0].data;
+            new_out_1[0].gl_Position = holder[0].gl_Position;
+
+            new_out_1[1].data = p_A;
+            //new_out_1[1].data = goner[0].data;
+
+            new_out_1[1].gl_Position = goner[0].gl_Position;
+            new_out_1[1].gl_Position[0] = clipped_v1[0];
+            new_out_1[1].gl_Position[1] = clipped_v1[1];
+            new_out_1[1].gl_Position[2] = clipped_v1[2];
+
+            new_out_1[2].data = p_B;
+           // new_out_1[2].data = goner[0].data;
+            new_out_1[2].gl_Position = goner[0].gl_Position;
+
+            new_out_1[2].gl_Position[0] = clipped_v2[0];
+            new_out_1[2].gl_Position[1] = clipped_v2[1];
+            new_out_1[2].gl_Position[2] = clipped_v2[2];
+
+
+            // SECOND NEW TRIANGLE
+            new_out_2[0].data = holder[0].data;
+            new_out_2[0].gl_Position = holder[0].gl_Position;
+
+            new_out_2[1].data = holder[1].data;
+            new_out_2[1].gl_Position = holder[1].gl_Position;
+
+            new_out_1[2].data = p_B;
+            //new_out_2[2].data = goner[0].data;
+
+            new_out_2[2].gl_Position = goner[0].gl_Position;
+            new_out_2[2].gl_Position[0] = clipped_v2[0];
+            new_out_2[2].gl_Position[1] = clipped_v2[1];
+            new_out_2[2].gl_Position[2] = clipped_v2[2];
+
+            clip_triangle(state, p_new_out_1, face+1);
+            clip_triangle(state, p_new_out_2, face+1);
+            return;
+       */
+        }
+        //dot(plane_norm,(plane_point - a));
+
+       clip_triangle(state, p_out, face+1);
+
+    //std::cout<<"TODO: implement clipping. (The current code passes the triangle through without clipping them.)"<<std::endl;
+    //clip_triangle(state,in,face+1);
 }
 
 // Rasterize the triangle defined by the three vertices in the "in" array.  This
@@ -196,7 +389,12 @@ void clip_triangle(driver_state& state, const data_geometry* in[3],int face)
 // fragments, calling the fragment shader, and z-buffering.
 void rasterize_triangle(driver_state& state, const data_geometry* in[3])
 {
+/*
     //std::cout<<"TODO: implement rasterization"<<std::endl;
+    std::cout<<"a: "<< in[0]->gl_Position<<std::endl;
+    std::cout<<"b: "<< in[1]->gl_Position<<std::endl;
+    std::cout<<"c: "<< in[2]->gl_Position<<std::endl;
+*/
 
     float alpha, beta, gamma, inv_tArea;
 
@@ -215,6 +413,7 @@ void rasterize_triangle(driver_state& state, const data_geometry* in[3])
     vec2 c = vec2( (in[2]->gl_Position[0] /in[2]->gl_Position[3] + 1) * 0.5 * width ,
                    (in[2]->gl_Position[1] /in[2]->gl_Position[3] + 1) * 0.5 * height);
 //*/
+
     inv_tArea = 1/t_Area(a,b,c);
     int walk = 0;
     for(size_t i = 0; i < height; ++i){
@@ -227,9 +426,13 @@ void rasterize_triangle(driver_state& state, const data_geometry* in[3])
 
             pixel_pos_3d[0] = pixel_pos[0];
             pixel_pos_3d[1] = pixel_pos[1];
-            pixel_pos_3d[2] = (in[0]->data[2]*alpha + in[1]->data[2]*beta + in[2]->data[2]*gamma);
-            //pixel_pos_3d[2] = (in[0]->gl_Position[2]*alpha + in[1]->gl_Position[2]*beta + in[2]->gl_Position[2]*gamma);
 
+            //pixel_pos_3d[2] = (in[0]->data[2]*alpha + in[1]->data[2]*beta + in[2]->data[2]*gamma);
+            //std::cout<<"data: "<<  pixel_pos_3d[2]<<std::endl;
+
+            //pixel_pos_3d[2] = -(in[0]->gl_Position[2]*alpha + in[1]->gl_Position[2]*beta + in[2]->gl_Position[2]*gamma);
+            //std::cout<<"gl_pos: "<< pixel_pos_3d[2]<<std::endl;
+            pixel_pos_3d[2] = -(in[0]->gl_Position[2]/in[0]->gl_Position[3]*alpha + in[1]->gl_Position[2]/in[1]->gl_Position[3]*beta + in[2]->gl_Position[2]/in[2]->gl_Position[3]*gamma);
 
             if(alpha >= 0 && beta >= 0 && gamma >= 0){
             //std::cout << "A B G = " << alpha << " " << beta << " " << gamma << std::endl;
@@ -250,13 +453,21 @@ void rasterize_triangle(driver_state& state, const data_geometry* in[3])
                     else if(state.interp_rules[k] == interp_type::smooth){
                         // then data_out[i] should be the interpolation of data_a[i], data_b[i] and data_c[i]
                         // using the barycentric coordinates with perspective correction
+                        //d_out[k]= (alpha * in[0]->data[k]/in[0]->gl_Position[3]) + (beta * in[1]->data[k]/in[1]->gl_Position[3]) + (gamma * in[2]->data[k]/in[2]->gl_Position[3]);
+
+                        d_out[k]= ((alpha * in[0]->data[k]/in[0]->gl_Position[3]) + (beta * in[1]->data[k]/in[1]->gl_Position[3]) + (gamma * in[2]->data[k]/in[2]->gl_Position[3]))
+                                /((alpha/in[0]->gl_Position[3]) + (beta/in[1]->gl_Position[3]) + (gamma/in[2]->gl_Position[3]));
+
+                        // super wrong, but cool;
+                        /*d_out[k]= ((alpha * in[0]->data[k]) + (beta * in[1]->data[k]) + (gamma * in[2]->data[k]))
+                        * ( in[0]->gl_Position[3] * in[1]->gl_Position[3] * in[2]->gl_Position[3]);*/
                     }
                 }
 
               // float hmm = (in[0]->gl_Position[]
 
-               if(pixel_pos_3d[2] > state.image_depth[walk] ){
-               //if(pixel_pos_3d[2] > state.image_depth[walk] && pixel_pos_3d[2] >= -5 && pixel_pos_3d[2] < 1  ){
+               //if(pixel_pos_3d[2] > state.image_depth[walk] ){
+               if(pixel_pos_3d[2] > state.image_depth[walk] && pixel_pos_3d[2] >= -1 && pixel_pos_3d[2] <= 1  ){
                     state.image_depth[walk] = pixel_pos_3d[2];
                     state.fragment_shader({d_out}, dOutput, state.uniform_data);
                     state.image_color[walk] = make_pixel(255*dOutput.output_color[0],255*dOutput.output_color[1],255*dOutput.output_color[2]);
